@@ -2,11 +2,18 @@ import { useState } from 'react';
 import { api } from './api';
 import './App.css';
 
+function getErrorMessage(error) {
+  if (error?.code === 'ECONNABORTED') {
+    return 'Request timed out. Backend slow or unreachable.';
+  }
+  return error?.response?.data?.error || error?.message || 'Unknown error';
+}
+
 function App() {
   const [brief, setBrief] = useState('');
   const [campaign, setCampaign] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState('input'); // input, strategy, content, launched, performance, optimization
+  const [step, setStep] = useState('input');
 
   const handleCreateCampaign = async () => {
     setLoading(true);
@@ -15,9 +22,10 @@ function App() {
       setCampaign(res.data);
       setStep('strategy');
     } catch (error) {
-      alert('Error: ' + error.message);
+      alert(`Error: ${getErrorMessage(error)}`);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleGenerateStrategy = async () => {
@@ -27,9 +35,10 @@ function App() {
       setCampaign(res.data);
       setStep('content');
     } catch (error) {
-      alert('Error: ' + error.message);
+      alert(`Error: ${getErrorMessage(error)}`);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleGenerateContent = async () => {
@@ -39,9 +48,10 @@ function App() {
       setCampaign(res.data);
       setStep('launched');
     } catch (error) {
-      alert('Error: ' + error.message);
+      alert(`Error: ${getErrorMessage(error)}`);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleLaunch = async () => {
@@ -51,9 +61,10 @@ function App() {
       setCampaign(res.data);
       setTimeout(() => fetchPerformance(), 2000);
     } catch (error) {
-      alert('Error: ' + error.message);
+      alert(`Error: ${getErrorMessage(error)}`);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const fetchPerformance = async () => {
@@ -62,7 +73,7 @@ function App() {
       setCampaign(res.data);
       setStep('performance');
     } catch (error) {
-      alert('Error: ' + error.message);
+      alert(`Error: ${getErrorMessage(error)}`);
     }
   };
 
@@ -73,9 +84,10 @@ function App() {
       setCampaign(res.data);
       setStep('optimization');
     } catch (error) {
-      alert('Error: ' + error.message);
+      alert(`Error: ${getErrorMessage(error)}`);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleApproveOptimization = async (index) => {
@@ -83,23 +95,24 @@ function App() {
     try {
       const res = await api.approveOptimization(campaign._id, index);
       setCampaign(res.data);
-      alert('✅ Optimization approved and relaunched!');
+      alert('Optimization approved and relaunched.');
     } catch (error) {
-      alert('Error: ' + error.message);
+      alert(`Error: ${getErrorMessage(error)}`);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
     <div className="app">
       <header>
-        <h1>🔥 CampaignX</h1>
+        <h1>CampaignX</h1>
         <p>AI Multi-Agent Email Marketing System</p>
       </header>
 
       {step === 'input' && (
         <div className="card">
-          <h2>📩 Campaign Brief</h2>
+          <h2>Campaign Brief</h2>
           <textarea
             value={brief}
             onChange={(e) => setBrief(e.target.value)}
@@ -107,37 +120,37 @@ function App() {
             rows={6}
           />
           <button onClick={handleCreateCampaign} disabled={loading || !brief}>
-            {loading ? '⏳ Processing...' : 'Generate Strategy →'}
+            {loading ? 'Processing...' : 'Generate Strategy ->'}
           </button>
         </div>
       )}
 
       {step === 'strategy' && campaign?.parsedBrief && (
         <div className="card">
-          <h2>🎯 Parsed Brief</h2>
+          <h2>Parsed Brief</h2>
           <div className="info-grid">
             <div><strong>Product:</strong> {campaign.parsedBrief.product}</div>
             <div><strong>Target:</strong> {campaign.parsedBrief.target}</div>
             <div><strong>Offer:</strong> {campaign.parsedBrief.offer}</div>
             <div><strong>Objectives:</strong> {campaign.parsedBrief.objectives?.join(', ')}</div>
           </div>
-          
-          <h3>📊 Customer Cohort (Fresh from API)</h3>
+
+          <h3>Customer Cohort (Fresh from API)</h3>
           <div className="info-grid">
             <div><strong>Total Customers:</strong> {campaign.cohort?.length || 0}</div>
-            <div><strong>Segments:</strong> {[...new Set(campaign.cohort?.map(c => c.segment))].join(', ')}</div>
+            <div><strong>Segments:</strong> {[...new Set(campaign.cohort?.map((c) => c.segment))].join(', ')}</div>
           </div>
-          <p className="note">✅ Fresh cohort fetched - no old data used</p>
-          
+          <p className="note">Fresh cohort fetched - no old data used</p>
+
           <button onClick={handleGenerateStrategy} disabled={loading}>
-            {loading ? '⏳ Generating Strategy...' : '✓ Approve & Generate Strategy'}
+            {loading ? 'Generating Strategy...' : 'Approve & Generate Strategy'}
           </button>
         </div>
       )}
 
       {step === 'content' && campaign?.strategy && (
         <div className="card">
-          <h2>📊 Campaign Strategy</h2>
+          <h2>Campaign Strategy</h2>
           <div className="info-grid">
             <div><strong>Segments:</strong> {campaign.strategy.segments?.join(', ')}</div>
             <div><strong>Variants:</strong> {campaign.strategy.variants}</div>
@@ -146,14 +159,14 @@ function App() {
           </div>
           <p><em>{campaign.strategy.reasoning}</em></p>
           <button onClick={handleGenerateContent} disabled={loading}>
-            {loading ? '⏳ Generating Content...' : '✓ Approve & Generate Content'}
+            {loading ? 'Generating Content...' : 'Approve & Generate Content'}
           </button>
         </div>
       )}
 
       {step === 'launched' && campaign?.content && (
         <div className="card">
-          <h2>✉️ Email Content Preview</h2>
+          <h2>Email Content Preview</h2>
           {Object.entries(campaign.content).map(([key, variant]) => (
             <div key={key} className="variant">
               <h3>{key.toUpperCase()}</h3>
@@ -162,19 +175,19 @@ function App() {
               <p><strong>CTA:</strong> {variant.cta_text}</p>
               <details>
                 <summary>View Body</summary>
-                <pre style={{whiteSpace: 'pre-wrap'}}>{variant.body}</pre>
+                <pre style={{ whiteSpace: 'pre-wrap' }}>{variant.body}</pre>
               </details>
             </div>
           ))}
           <button onClick={handleLaunch} disabled={loading}>
-            {loading ? '⏳ Launching...' : '🚀 Approve & Launch Campaign'}
+            {loading ? 'Launching...' : 'Approve & Launch Campaign'}
           </button>
         </div>
       )}
 
       {step === 'performance' && campaign?.performance && (
         <div className="card">
-          <h2>📈 Campaign Performance</h2>
+          <h2>Campaign Performance</h2>
           <div className="metrics">
             <div className="metric">
               <div className="metric-value">{campaign.performance.open_rate}%</div>
@@ -192,7 +205,7 @@ function App() {
           {campaign.performance.needs_optimization && (
             <>
               <div className="issues">
-                <h3>⚠️ Issues Detected:</h3>
+                <h3>Issues Detected:</h3>
                 <ul>
                   {campaign.performance.issues?.map((issue, i) => (
                     <li key={i}>{issue.replace('_', ' ')}</li>
@@ -203,7 +216,7 @@ function App() {
                 </ul>
               </div>
               <button onClick={handleOptimize} disabled={loading}>
-                {loading ? '⏳ Generating Optimization...' : '🔄 Auto-Optimize Campaign'}
+                {loading ? 'Generating Optimization...' : 'Auto-Optimize Campaign'}
               </button>
             </>
           )}
@@ -212,7 +225,7 @@ function App() {
 
       {step === 'optimization' && campaign?.optimizations?.length > 0 && (
         <div className="card">
-          <h2>🔄 Optimization Suggestions</h2>
+          <h2>Optimization Suggestions</h2>
           {campaign.optimizations.map((opt, index) => (
             <div key={index} className="optimization">
               <h3>Iteration {opt.iteration}</h3>
@@ -226,10 +239,10 @@ function App() {
               <p><strong>Expected Improvement:</strong> {opt.expected_improvement}</p>
               {opt.status === 'pending_approval' && (
                 <button onClick={() => handleApproveOptimization(index)} disabled={loading}>
-                  {loading ? '⏳ Relaunching...' : '✓ Approve & Relaunch'}
+                  {loading ? 'Relaunching...' : 'Approve & Relaunch'}
                 </button>
               )}
-              {opt.status === 'approved' && <p className="success">✅ Approved & Relaunched</p>}
+              {opt.status === 'approved' && <p className="success">Approved & Relaunched</p>}
             </div>
           ))}
         </div>

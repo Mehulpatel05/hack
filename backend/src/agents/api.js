@@ -4,18 +4,22 @@ import { log } from '../utils/logger.js';
 
 const API_BASE = process.env.SUPERBFSI_API_URL || 'https://api.superbfsi.com';
 const API_KEY = process.env.SUPERBFSI_API_KEY;
+const EXTERNAL_TIMEOUT_MS = Number(process.env.EXTERNAL_TIMEOUT_MS || 15000);
 
 // CRITICAL: Fetch OpenAPI spec at RUNTIME (not hardcoded)
 export async function fetchOpenAPISpec(campaignId) {
-  console.log('🔍 Fetching OpenAPI spec from SuperBFSI...');
+  console.log('Fetching OpenAPI spec from SuperBFSI...');
   log(campaignId, 'API', 'fetching_openapi_spec', { url: `${API_BASE}/openapi.json` });
-  
+
   try {
-    const response = await axios.get(`${API_BASE}/openapi.json`);
+    const response = await axios.get(`${API_BASE}/openapi.json`, {
+      timeout: EXTERNAL_TIMEOUT_MS,
+      headers: { Authorization: `Bearer ${API_KEY}` }
+    });
     log(campaignId, 'API', 'openapi_spec_fetched', { endpoints: Object.keys(response.data.paths || {}) });
     return response.data;
   } catch (error) {
-    console.warn('⚠️  Using mock OpenAPI spec for demo');
+    console.warn('OpenAPI fetch failed, using mock spec:', error.code || error.message);
     return getMockOpenAPISpec();
   }
 }
@@ -57,16 +61,14 @@ function getMockOpenAPISpec() {
 
 // TRUE Dynamic API calling - LLM reads spec and generates call
 export async function dynamicAPICall(action, data, campaignId) {
-  // Step 1: Fetch OpenAPI spec at runtime
   const spec = await fetchOpenAPISpec(campaignId);
-  
-  console.log('🤖 LLM parsing OpenAPI spec...');
+
+  console.log('LLM parsing OpenAPI spec...');
   log(campaignId, 'API', 'llm_parsing_spec', { action });
-  
-  // Step 2: LLM reads spec and decides endpoint/method/payload
+
   const systemPrompt = `You are an API integration expert. Read the OpenAPI specification and generate the correct API call.
 NEVER hardcode endpoints - always derive from the spec.`;
-  
+
   const prompt = `OpenAPI Specification:
 ${JSON.stringify(spec, null, 2)}
 
@@ -83,38 +85,37 @@ Analyze the spec and generate:
 Return JSON only.`;
 
   const apiCall = await callLLMJSON(prompt, systemPrompt);
-  
-  console.log('✅ LLM generated API call:', JSON.stringify(apiCall, null, 2));
+
+  console.log('LLM generated API call:', JSON.stringify(apiCall, null, 2));
   log(campaignId, 'API', 'llm_generated_call', apiCall);
 
-  // Step 3: Execute the LLM-generated API call
   const result = await executeAPICall(apiCall, campaignId);
   log(campaignId, 'API', 'call_executed', result);
-  
+
   return result;
 }
 
-// Execute API call (real or mock)
-async function executeAPICall(apiCall, campaignId) {
+async function executeAPICall(apiCall) {
   try {
     const url = `${API_BASE}${apiCall.endpoint}`;
     const config = {
       method: apiCall.method,
       url,
+      timeout: EXTERNAL_TIMEOUT_MS,
       headers: {
-        'Authorization': `Bearer ${API_KEY}`,
+        Authorization: `Bearer ${API_KEY}`,
         'Content-Type': 'application/json',
         ...apiCall.headers
       },
       data: apiCall.body,
       params: apiCall.params
     };
-    
+
     const response = await axios(config);
     return response.data;
-    
+
   } catch (error) {
-    console.warn('⚠️  Using mock API response for demo');
+    console.warn('Dynamic API call failed, using mock response:', error.code || error.message);
     return generateMockResponse(apiCall);
   }
 }
@@ -127,7 +128,7 @@ function generateMockResponse(apiCall) {
       sent_to_count: apiCall.body?.customer_ids?.length || 0
     };
   }
-  
+
   if (apiCall.endpoint?.includes('metrics')) {
     return {
       open_rate: (Math.random() * 30 + 15).toFixed(2),
@@ -137,6 +138,6 @@ function generateMockResponse(apiCall) {
       clicked: Math.floor(Math.random() * 50 + 10)
     };
   }
-  
+
   return { success: true };
 }
