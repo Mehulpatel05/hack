@@ -1,13 +1,13 @@
 import axios from 'axios';
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY;
+const HUGGINGFACE_MODEL = process.env.HUGGINGFACE_MODEL || 'HuggingFaceH4/zephyr-7b-beta';
 const LLM_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 20000);
 
 export async function callLLM(prompt, systemPrompt = '') {
   try {
-    if (!OPENAI_API_KEY || OPENAI_API_KEY.includes('your_')) {
-      throw new Error('Valid OPENAI_API_KEY is not configured in backend .env');
+    if (!HUGGINGFACE_API_KEY || HUGGINGFACE_API_KEY.includes('your_')) {
+      throw new Error('Valid HUGGINGFACE_API_KEY is not configured in backend .env');
     }
 
     const messages = [];
@@ -17,9 +17,9 @@ export async function callLLM(prompt, systemPrompt = '') {
     messages.push({ role: 'user', content: prompt.trim() });
 
     const response = await axios.post(
-      'https://api.openai.com/v1/chat/completions',
+      'https://router.huggingface.co/v1/chat/completions',
       {
-        model: OPENAI_MODEL,
+        model: HUGGINGFACE_MODEL,
         messages,
         temperature: 0.7,
         max_tokens: 2000
@@ -27,7 +27,7 @@ export async function callLLM(prompt, systemPrompt = '') {
       {
         timeout: LLM_TIMEOUT_MS,
         headers: {
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          Authorization: `Bearer ${HUGGINGFACE_API_KEY}`,
           'Content-Type': 'application/json'
         }
       }
@@ -35,18 +35,18 @@ export async function callLLM(prompt, systemPrompt = '') {
 
     const text = response.data?.choices?.[0]?.message?.content?.trim();
     if (!text) {
-      throw new Error('OpenAI returned an empty response');
+      throw new Error('Hugging Face returned an empty response');
     }
 
     return text;
   } catch (error) {
     const isTimeout = error.code === 'ECONNABORTED';
-    const upstreamMessage = error.response?.data?.error?.message || error.response?.data?.message;
+    const upstreamMessage = error.response?.data?.error?.message || error.response?.data?.error || error.response?.data?.message;
     const message = isTimeout
       ? `LLM request timed out after ${LLM_TIMEOUT_MS}ms`
       : upstreamMessage || error.message;
 
-    console.error('OpenAI Error:', message);
+    console.error('Hugging Face Error:', message);
     throw new Error(message);
   }
 }
