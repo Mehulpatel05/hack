@@ -1,4 +1,13 @@
-import { db, collection, doc, getDoc, setDoc, updateDoc } from '../utils/firebase.js';
+import { db, doc, getDoc, setDoc } from '../utils/firebase.js';
+
+const DB_TIMEOUT_MS = Number(process.env.DB_TIMEOUT_MS || 10000);
+
+function withTimeout(promise, ms = DB_TIMEOUT_MS, label = 'Database operation') {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms))
+  ]);
+}
 
 class Campaign {
   constructor(data) {
@@ -20,13 +29,13 @@ class Campaign {
   async save() {
     this.updatedAt = new Date();
     const campaignRef = doc(db, 'campaigns', this._id);
-    await setDoc(campaignRef, this.toJSON());
+    await withTimeout(setDoc(campaignRef, this.toJSON()), DB_TIMEOUT_MS, 'Campaign save');
     return this;
   }
 
   static async findById(id) {
     const campaignRef = doc(db, 'campaigns', id);
-    const campaignSnap = await getDoc(campaignRef);
+    const campaignSnap = await withTimeout(getDoc(campaignRef), DB_TIMEOUT_MS, 'Campaign fetch');
     if (!campaignSnap.exists()) {
       throw new Error('Campaign not found');
     }
