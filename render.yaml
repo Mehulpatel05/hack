@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: campaignx-backend
+    env: node
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: MONGODB_URI
+        value: mongodb://localhost:27017/campaignx
+      - key: PORT
+        value: 3001
+
+  - type: web
+    name: campaignx-frontend
+    env: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://campaignx-backend.onrender.com/api

@@ -1,0 +1,56 @@
+import axios from 'axios';
+import { log } from '../utils/logger.js';
+
+const API_BASE = process.env.SUPERBFSI_API_URL || 'https://api.superbfsi.com';
+const API_KEY = process.env.SUPERBFSI_API_KEY;
+
+// ALWAYS fetch fresh cohort - NO CACHING (test phase compliance)
+export async function fetchCustomerCohort(campaignId) {
+  log(campaignId, 'Cohort', 'fetching_fresh', { timestamp: new Date().toISOString() });
+  
+  try {
+    const response = await axios.get(`${API_BASE}/customers/cohort`, {
+      headers: { 'Authorization': `Bearer ${API_KEY}` }
+    });
+    
+    log(campaignId, 'Cohort', 'fetched_real_api', { count: response.data.length });
+    return response.data;
+    
+  } catch (error) {
+    console.warn('⚠️  Using mock cohort (will use real API on 14 March)');
+    const mock = generateFreshCohort();
+    log(campaignId, 'Cohort', 'using_fresh_mock', { count: mock.length });
+    return mock;
+  }
+}
+
+function generateFreshCohort() {
+  const cohort = [];
+  let id = Date.now();
+  
+  for (let i = 0; i < 1000; i++) {
+    const age = 25 + Math.floor(Math.random() * 40);
+    cohort.push({
+      customer_id: `CUST_${id++}`,
+      age,
+      segment: `age_${Math.floor(age/10)*10}_${Math.floor(age/10)*10+9}`,
+      email: `cust${id}@example.com`
+    });
+  }
+  return cohort;
+}
+
+export function selectFromCohort(cohort, segments) {
+  return cohort.filter(c => segments.includes(c.segment)).map(c => c.customer_id);
+}
+
+export function checkFullCoverage(cohort, sentIds) {
+  const sent = new Set(sentIds.flat());
+  const uncovered = cohort.filter(c => !sent.has(c.customer_id));
+  return {
+    total: cohort.length,
+    covered: sent.size,
+    uncovered: uncovered.length,
+    percentage: ((sent.size / cohort.length) * 100).toFixed(2)
+  };
+}
