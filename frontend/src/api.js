@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_BASE = import.meta.env.VITE_API_URL || 'https://hack-019h.onrender.com/api';
 
 export const api = {
   createCampaign: (brief) => axios.post(`${API_BASE}/campaigns`, { brief }),
