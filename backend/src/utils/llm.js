@@ -1,46 +1,41 @@
 import axios from 'axios';
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 const LLM_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 20000);
 
 export async function callLLM(prompt, systemPrompt = '') {
   try {
-    if (!GEMINI_API_KEY || GEMINI_API_KEY.includes('your_')) {
-      throw new Error('Valid GEMINI_API_KEY is not configured in backend .env');
+    if (!OPENAI_API_KEY || OPENAI_API_KEY.includes('your_')) {
+      throw new Error('Valid OPENAI_API_KEY is not configured in backend .env');
     }
 
-    const fullPrompt = `${systemPrompt}\n\n${prompt}`.trim();
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+    const messages = [];
+    if (systemPrompt?.trim()) {
+      messages.push({ role: 'system', content: systemPrompt.trim() });
+    }
+    messages.push({ role: 'user', content: prompt.trim() });
 
     const response = await axios.post(
-      url,
+      'https://api.openai.com/v1/chat/completions',
       {
-        contents: [
-          {
-            parts: [{ text: fullPrompt }]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 2048
-        }
+        model: OPENAI_MODEL,
+        messages,
+        temperature: 0.7,
+        max_tokens: 2000
       },
       {
         timeout: LLM_TIMEOUT_MS,
         headers: {
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
           'Content-Type': 'application/json'
         }
       }
     );
 
-    const text = response.data?.candidates?.[0]?.content?.parts
-      ?.map((part) => part.text || '')
-      .join('')
-      .trim();
-
+    const text = response.data?.choices?.[0]?.message?.content?.trim();
     if (!text) {
-      throw new Error('Gemini returned an empty response');
+      throw new Error('OpenAI returned an empty response');
     }
 
     return text;
@@ -51,7 +46,7 @@ export async function callLLM(prompt, systemPrompt = '') {
       ? `LLM request timed out after ${LLM_TIMEOUT_MS}ms`
       : upstreamMessage || error.message;
 
-    console.error('Gemini Error:', message);
+    console.error('OpenAI Error:', message);
     throw new Error(message);
   }
 }
