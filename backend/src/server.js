@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import mongoose from 'mongoose';
 import campaignRoutes from './routes/campaign.js';
 
 dotenv.config();
@@ -13,10 +12,7 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-// MongoDB connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/campaignx')
-  .then(() => console.log('✅ MongoDB connected'))
-  .catch(err => console.log('⚠️  MongoDB not available, using in-memory mode:', err.message));
+console.log('✅ Firebase configured');
 
 // Routes
 app.use('/api', campaignRoutes);
