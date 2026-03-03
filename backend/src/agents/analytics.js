@@ -1,6 +1,6 @@
 import { log } from '../utils/logger.js';
 
-export async function analyzePerformance(metrics, campaignId) {
+export async function analyzePerformance(metrics, campaignId, campaignData = {}) {
   const openRate = metrics.open_rate || 0;
   const clickRate = metrics.click_rate || 0;
   
@@ -28,7 +28,8 @@ export async function analyzePerformance(metrics, campaignId) {
     click_rate: clickRate.toFixed(2),
     issues,
     low_segments: lowSegments,
-    needs_optimization: issues.length > 0 || lowSegments.length > 0
+    needs_optimization: issues.length > 0 || lowSegments.length > 0,
+    inactive_included: campaignData.include_inactive || false
   };
   
   log(campaignId, 'Analytics', 'analyzed', analysis);

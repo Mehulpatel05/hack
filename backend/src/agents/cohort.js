@@ -32,9 +32,14 @@ function generateFreshCohort() {
 
   for (let i = 0; i < 1000; i++) {
     const age = 25 + Math.floor(Math.random() * 40);
+    const gender = Math.random() > 0.5 ? 'female' : 'male';
+    const is_active = Math.random() > 0.1; // 90% active, 10% inactive
+    
     cohort.push({
       customer_id: `CUST_${id++}`,
       age,
+      gender,
+      is_active,
       segment: `age_${Math.floor(age / 10) * 10}_${Math.floor(age / 10) * 10 + 9}`,
       email: `cust${id}@example.com`
     });
@@ -42,8 +47,15 @@ function generateFreshCohort() {
   return cohort;
 }
 
-export function selectFromCohort(cohort, segments) {
-  return cohort.filter((c) => segments.includes(c.segment)).map((c) => c.customer_id);
+export function selectFromCohort(cohort, segments, includeInactive = false) {
+  return cohort
+    .filter((c) => segments.includes(c.segment))
+    .filter((c) => includeInactive || c.is_active)
+    .map((c) => c.customer_id);
+}
+
+export function identifyFemaleSeniorCitizens(cohort) {
+  return cohort.filter((c) => c.gender === 'female' && c.age >= 60).map((c) => c.customer_id);
 }
 
 export function checkFullCoverage(cohort, sentIds) {

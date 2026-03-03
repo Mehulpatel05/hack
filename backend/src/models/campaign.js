@@ -44,6 +44,7 @@ class Campaign {
 
   toJSON() {
     return {
+      _id: this._id,
       brief: this.brief,
       parsedBrief: this.parsedBrief,
       cohort: this.cohort,

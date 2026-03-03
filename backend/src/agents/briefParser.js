@@ -7,11 +7,12 @@ Extract structured information from the brief.`;
 
   const prompt = `Parse this campaign brief and extract:
 - product: product name
-- target: target audience (new_customers, existing_customers, all)
+- target: target audience ONLY if explicitly mentioned (new_customers, existing_customers, all). If NOT mentioned, set to "entire_customer_cohort"
 - offer: special offer or benefit
 - url: any URL to include
 - objectives: array of objectives (open_rate, click_rate, conversions)
 - tone: email tone (professional, friendly, urgent)
+- include_inactive: boolean - true if brief says "do not skip inactive" or "include inactive", false otherwise
 
 Brief: "${brief}"
 

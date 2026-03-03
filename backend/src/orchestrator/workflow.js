@@ -40,7 +40,7 @@ export async function approveAndGenerateStrategy(campaignId) {
 export async function approveAndGenerateContent(campaignId) {
   const campaign = await Campaign.findById(campaignId);
   
-  const content = await generateContent(campaign.parsedBrief, campaign.strategy, campaignId);
+  const content = await generateContent(campaign.parsedBrief, campaign.strategy, campaign.cohort, campaignId);
   campaign.content = content;
   campaign.status = 'approved';
   await campaign.save();
@@ -51,8 +51,9 @@ export async function approveAndGenerateContent(campaignId) {
 export async function launchCampaign(campaignId) {
   const campaign = await Campaign.findById(campaignId);
   
-  // Select customer IDs from REAL cohort
-  const customerIds = selectFromCohort(campaign.cohort, campaign.strategy.segments);
+  // Select customer IDs from REAL cohort with inactive filtering
+  const includeInactive = campaign.parsedBrief.include_inactive || false;
+  const customerIds = selectFromCohort(campaign.cohort, campaign.strategy.segments, includeInactive);
   
   // Use DYNAMIC API call (LLM reads OpenAPI spec)
   const apiResult = await dynamicAPICall('schedule_campaign', {
@@ -64,7 +65,7 @@ export async function launchCampaign(campaignId) {
   }, campaignId);
   
   campaign.apiCalls = campaign.apiCalls || [];
-  campaign.apiCalls.push({ ...apiResult, sent_to: customerIds });
+  campaign.apiCalls.push({ ...apiResult, sent_to: customerIds, include_inactive: includeInactive });
   campaign.status = 'running';
   await campaign.save();
   
@@ -79,7 +80,9 @@ export async function fetchPerformance(campaignId) {
     campaign_id: campaign.apiCalls[campaign.apiCalls.length - 1]?.campaign_id
   }, campaignId);
   
-  const analysis = await analyzePerformance(metrics, campaignId);
+  const analysis = await analyzePerformance(metrics, campaignId, {
+    include_inactive: campaign.parsedBrief.include_inactive
+  });
   campaign.performance = analysis;
   await campaign.save();
   
@@ -116,8 +119,9 @@ export async function approveOptimization(campaignId, optimizationIndex) {
   const optimizedContent = await applyOptimization(optimization, campaign.content.variant_a);
   campaign.content.variant_optimized = optimizedContent;
   
-  // Select NEW customer IDs from cohort for optimized segment
-  const customerIds = selectFromCohort(campaign.cohort, [optimization.target_segment]);
+  // Select NEW customer IDs from cohort for optimized segment with inactive filtering
+  const includeInactive = campaign.parsedBrief.include_inactive || false;
+  const customerIds = selectFromCohort(campaign.cohort, [optimization.target_segment], includeInactive);
   
   // RELAUNCH using DYNAMIC API
   const apiResult = await dynamicAPICall('schedule_campaign', {
@@ -128,7 +132,7 @@ export async function approveOptimization(campaignId, optimizationIndex) {
     schedule_time: optimization.send_time
   }, campaignId);
   
-  campaign.apiCalls.push({ ...apiResult, sent_to: customerIds, iteration: optimization.iteration });
+  campaign.apiCalls.push({ ...apiResult, sent_to: customerIds, iteration: optimization.iteration, include_inactive: includeInactive });
   optimization.status = 'approved';
   campaign.status = 'running';
   await campaign.save();
