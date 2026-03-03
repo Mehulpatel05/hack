@@ -48,6 +48,9 @@ function generateFreshCohort() {
 }
 
 export function selectFromCohort(cohort, segments, includeInactive = false) {
+  if (!segments || !Array.isArray(segments) || segments.length === 0) {
+    return [];
+  }
   return cohort
     .filter((c) => segments.includes(c.segment))
     .filter((c) => includeInactive || c.is_active)
