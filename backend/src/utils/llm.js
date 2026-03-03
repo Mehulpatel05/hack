@@ -1,37 +1,41 @@
 import axios from 'axios';
 
-const COHERE_API_KEY = process.env.COHERE_API_KEY;
-const COHERE_MODEL = process.env.COHERE_MODEL || 'command-r';
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || 'google/gemini-1.5-flash';
 const LLM_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 20000);
 
 export async function callLLM(prompt, systemPrompt = '') {
   try {
-    if (!COHERE_API_KEY || COHERE_API_KEY.includes('your_')) {
-      throw new Error('Valid COHERE_API_KEY is not configured in backend .env');
+    if (!OPENROUTER_API_KEY || OPENROUTER_API_KEY.includes('your_')) {
+      throw new Error('Valid OPENROUTER_API_KEY is not configured in backend .env');
     }
 
-    const message = systemPrompt ? `${systemPrompt}\n\n${prompt}` : prompt;
+    const messages = [];
+    if (systemPrompt) {
+      messages.push({ role: 'system', content: systemPrompt });
+    }
+    messages.push({ role: 'user', content: prompt });
 
     const response = await axios.post(
-      'https://api.cohere.ai/v1/chat',
+      'https://openrouter.ai/api/v1/chat/completions',
       {
-        model: COHERE_MODEL,
-        message: message.trim(),
+        model: OPENROUTER_MODEL,
+        messages,
         temperature: 0.7,
         max_tokens: 2000
       },
       {
         timeout: LLM_TIMEOUT_MS,
         headers: {
-          Authorization: `Bearer ${COHERE_API_KEY}`,
+          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
           'Content-Type': 'application/json'
         }
       }
     );
 
-    const text = response.data?.text?.trim();
+    const text = response.data?.choices?.[0]?.message?.content?.trim();
     if (!text) {
-      throw new Error('Cohere returned an empty response');
+      throw new Error('OpenRouter returned an empty response');
     }
 
     return text;
@@ -42,7 +46,7 @@ export async function callLLM(prompt, systemPrompt = '') {
       ? `LLM request timed out after ${LLM_TIMEOUT_MS}ms`
       : upstreamMessage || error.message;
 
-    console.error('Cohere Error:', message);
+    console.error('OpenRouter Error:', message);
     throw new Error(message);
   }
 }
