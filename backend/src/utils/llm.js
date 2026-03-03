@@ -1,52 +1,48 @@
 import axios from 'axios';
 
-const GROQ_API_KEY = process.env.GROQ_API_KEY;
-const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
+const COHERE_API_KEY = process.env.COHERE_API_KEY;
+const COHERE_MODEL = process.env.COHERE_MODEL || 'command-r';
 const LLM_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 20000);
 
 export async function callLLM(prompt, systemPrompt = '') {
   try {
-    if (!GROQ_API_KEY || GROQ_API_KEY.includes('your_')) {
-      throw new Error('Valid GROQ_API_KEY is not configured in backend .env');
+    if (!COHERE_API_KEY || COHERE_API_KEY.includes('your_')) {
+      throw new Error('Valid COHERE_API_KEY is not configured in backend .env');
     }
 
-    const messages = [];
-    if (systemPrompt?.trim()) {
-      messages.push({ role: 'system', content: systemPrompt.trim() });
-    }
-    messages.push({ role: 'user', content: prompt.trim() });
+    const message = systemPrompt ? `${systemPrompt}\n\n${prompt}` : prompt;
 
     const response = await axios.post(
-      'https://api.groq.com/openai/v1/chat/completions',
+      'https://api.cohere.ai/v1/chat',
       {
-        model: GROQ_MODEL,
-        messages,
+        model: COHERE_MODEL,
+        message: message.trim(),
         temperature: 0.7,
         max_tokens: 2000
       },
       {
         timeout: LLM_TIMEOUT_MS,
         headers: {
-          Authorization: `Bearer ${GROQ_API_KEY}`,
+          Authorization: `Bearer ${COHERE_API_KEY}`,
           'Content-Type': 'application/json'
         }
       }
     );
 
-    const text = response.data?.choices?.[0]?.message?.content?.trim();
+    const text = response.data?.text?.trim();
     if (!text) {
-      throw new Error('Groq returned an empty response');
+      throw new Error('Cohere returned an empty response');
     }
 
     return text;
   } catch (error) {
     const isTimeout = error.code === 'ECONNABORTED';
-    const upstreamMessage = error.response?.data?.error?.message || error.response?.data?.message;
+    const upstreamMessage = error.response?.data?.message;
     const message = isTimeout
       ? `LLM request timed out after ${LLM_TIMEOUT_MS}ms`
       : upstreamMessage || error.message;
 
-    console.error('Groq Error:', message);
+    console.error('Cohere Error:', message);
     throw new Error(message);
   }
 }
