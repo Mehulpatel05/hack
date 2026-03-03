@@ -56,5 +56,14 @@ export async function callLLMJSON(prompt, systemPrompt = '') {
   const fencedMatch = response.match(/```json\s*([\s\S]*?)```/i);
   const candidate = fencedMatch ? fencedMatch[1] : response;
   const jsonMatch = candidate.match(/\{[\s\S]*\}/);
-  return jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(candidate);
+  const jsonStr = jsonMatch ? jsonMatch[0] : candidate;
+  
+  // Clean control characters that break JSON parsing
+  const cleaned = jsonStr
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r')
+    .replace(/\t/g, '\\t')
+    .replace(/[\x00-\x1F\x7F]/g, '');
+  
+  return JSON.parse(cleaned);
 }
