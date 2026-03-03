@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const COHERE_API_KEY = process.env.COHERE_API_KEY;
-const COHERE_MODEL = process.env.COHERE_MODEL || 'command';
+const COHERE_MODEL = process.env.COHERE_MODEL || 'command-r';
 const LLM_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 20000);
 
 export async function callLLM(prompt, systemPrompt = '') {
@@ -11,12 +11,13 @@ export async function callLLM(prompt, systemPrompt = '') {
     }
 
     const response = await axios.post(
-      'https://api.cohere.ai/v1/generate',
+      'https://api.cohere.com/v1/chat',
       {
         model: COHERE_MODEL,
-        prompt: `${systemPrompt}\n\n${prompt}`.trim(),
-        max_tokens: 2000,
-        temperature: 0.7
+        preamble: systemPrompt?.trim() || undefined,
+        message: prompt.trim(),
+        temperature: 0.7,
+        max_tokens: 2000
       },
       {
         timeout: LLM_TIMEOUT_MS,
@@ -27,9 +28,9 @@ export async function callLLM(prompt, systemPrompt = '') {
       }
     );
 
-    const text = response.data?.generations?.[0]?.text?.trim();
+    const text = response.data?.text?.trim();
     if (!text) {
-      throw new Error('Cohere returned an empty response');
+      throw new Error('Cohere Chat returned an empty response');
     }
 
     return text;
