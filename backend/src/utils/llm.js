@@ -53,17 +53,31 @@ export async function callLLM(prompt, systemPrompt = '') {
 
 export async function callLLMJSON(prompt, systemPrompt = '') {
   const response = await callLLM(prompt, systemPrompt + '\n\nRespond ONLY with valid JSON.');
-  const fencedMatch = response.match(/```json\s*([\s\S]*?)```/i);
-  const candidate = fencedMatch ? fencedMatch[1] : response;
-  const jsonMatch = candidate.match(/\{[\s\S]*\}/);
-  const jsonStr = jsonMatch ? jsonMatch[0] : candidate;
   
-  // Clean control characters that break JSON parsing
-  const cleaned = jsonStr
-    .replace(/\n/g, '\\n')
-    .replace(/\r/g, '\\r')
-    .replace(/\t/g, '\\t')
-    .replace(/[\x00-\x1F\x7F]/g, '');
+  // Extract JSON from markdown fences or raw response
+  let jsonStr = response;
+  const fencedMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fencedMatch) {
+    jsonStr = fencedMatch[1].trim();
+  }
   
-  return JSON.parse(cleaned);
+  // Find JSON object
+  const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    jsonStr = jsonMatch[0];
+  }
+  
+  try {
+    return JSON.parse(jsonStr);
+  } catch (e) {
+    // Fallback: escape unescaped control chars in string values only
+    const fixed = jsonStr.replace(/"([^"]*)"/g, (match, content) => {
+      const escaped = content
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r')
+        .replace(/\t/g, '\\t');
+      return `"${escaped}"`;
+    });
+    return JSON.parse(fixed);
+  }
 }
