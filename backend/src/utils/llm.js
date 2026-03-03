@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const COHERE_API_KEY = process.env.COHERE_API_KEY;
-const COHERE_MODEL = process.env.COHERE_MODEL || 'command-r';
+const COHERE_MODEL = process.env.COHERE_MODEL || 'command-r-plus';
 const LLM_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 20000);
 
 export async function callLLM(prompt, systemPrompt = '') {
